@@ -255,6 +255,93 @@ terraform/
 3. `terraform apply` - Apply changes
 4. `terraform destroy` - Remove infrastructure
 
+### Terraform Drift Detection & Management
+
+**What is Drift?**
+Drift occurs when actual infrastructure state differs from the Terraform state file.
+
+**Common Causes:**
+- **Manual Changes**: Portal/CLI modifications (VM resize, tag changes, NSG rules)
+- **Auto-Scaling**: AKS autoscaler, VM scale sets changing instance counts
+- **External Systems**: Azure Policy adding tags, backup solutions modifying resources
+- **Time-Based**: Certificate rotation, secret updates, credential expiration
+- **Concurrent Runs**: Multiple pipelines modifying infrastructure simultaneously
+
+**How Terraform Detects Drift:**
+```bash
+# During terraform plan, Terraform:
+1. Reads state file (last known configuration)
+2. Queries Azure API (current reality)
+3. Compares the two
+4. Shows differences as drift
+
+# Example output:
+  ~ resource "azurerm_virtual_machine" "main" {
+      ~ vm_size = "Standard_D4s_v3" -> "Standard_D2s_v3"
+        # Someone manually resized in portal
+    }
+```
+
+**Detection Commands:**
+```bash
+# Standard drift detection
+terraform plan -detailed-exitcode
+# Exit code 0 = no changes
+# Exit code 2 = drift detected
+
+# Show only drift (ignore code changes)
+terraform plan -refresh-only
+
+# Update state to match reality
+terraform apply -refresh-only
+```
+
+**Prevention Strategies:**
+```hcl
+# 1. Ignore expected changes (autoscaling)
+resource "azurerm_kubernetes_cluster" "main" {
+  lifecycle {
+    ignore_changes = [
+      default_node_pool[0].node_count,  # Autoscaler manages
+      tags["LastUpdated"]                # Auto-updated tag
+    ]
+  }
+}
+
+# 2. RBAC restrictions
+# Remove Owner/Contributor from humans
+# Require all changes through Terraform
+
+# 3. Azure Policy enforcement
+# Tag all resources with ManagedBy=Terraform
+# Detect manually created resources
+```
+
+**Automated Drift Detection:**
+```yaml
+# .github/workflows/drift-detection.yml
+name: Nightly Drift Check
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM daily
+
+jobs:
+  detect-drift:
+    steps:
+      - name: Check for Drift
+        run: terraform plan -detailed-exitcode
+        continue-on-error: true
+      
+      - name: Alert on Drift
+        if: steps.plan.outputs.exitcode == '2'
+        run: |
+          # Send Slack/Teams notification
+          echo "🚨 Drift detected in production!"
+```
+
+**Interview Answer Template:**
+> "Terraform detects drift during the refresh phase of `terraform plan` by querying Azure APIs and comparing actual state with the state file. I've implemented automated nightly drift detection that runs `terraform plan -detailed-exitcode` and alerts via Slack when exit code 2 is returned. For resources managed by autoscalers, I use lifecycle `ignore_changes` blocks to prevent false positives. We also enforce RBAC policies requiring all production changes go through Terraform."
+
 ### Ansible Best Practices
 - **Idempotency**: Safe to run multiple times
 - **Inventory Management**: Dynamic vs static
