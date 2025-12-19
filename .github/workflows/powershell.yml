@@ -1,0 +1,118 @@
+name: PowerShell Scripts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/powershell/**'
+      - '.github/workflows/powershell.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/powershell/**'
+  schedule:
+    # Run secret rotation every 90 days at 2 AM UTC
+    - cron: '0 2 */90 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  lint:
+    name: PSScriptAnalyzer
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install PSScriptAnalyzer
+        shell: powershell
+        run: |
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+      
+      - name: Run PSScriptAnalyzer
+        shell: powershell
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path ./scripts/powershell -Recurse -Settings PSGallery
+          $results | Format-Table -AutoSize
+          
+          if ($results) {
+            Write-Host "##[error]PSScriptAnalyzer found issues"
+            exit 1
+          }
+        continue-on-error: true
+
+  test:
+    name: Pester Tests
+    runs-on: windows-latest
+    needs: lint
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Pester
+        shell: powershell
+        run: |
+          Install-Module -Name Pester -Force -Scope CurrentUser -SkipPublisherCheck
+      
+      - name: Run Pester Tests
+        shell: powershell
+        run: |
+          $config = New-PesterConfiguration
+          $config.Run.Path = './scripts/powershell'
+          $config.Output.Verbosity = 'Detailed'
+          $config.CodeCoverage.Enabled = $true
+          
+          Invoke-Pester -Configuration $config
+        continue-on-error: true
+
+  rotate-secrets:
+    name: Rotate Azure Key Vault Secrets
+    runs-on: windows-latest
+    needs: [lint, test]
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: |
+            {
+              "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+              "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
+              "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
+            }
+      
+      - name: Run Secret Rotation
+        shell: powershell
+        run: |
+          ./scripts/powershell/Rotate-Secrets.ps1 `
+            -VaultName "${{ secrets.KEY_VAULT_NAME }}" `
+            -Verbose
+      
+      - name: Create Issue on Failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Secret Rotation Failed',
+              body: `Secret rotation failed on ${new Date().toISOString()}
+              
+              Workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}
+              
+              Please investigate immediately.`,
+              labels: ['bug', 'security', 'high-priority']
+            })

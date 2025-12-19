@@ -1,0 +1,46 @@
+# Example Terraform Variables
+# Copy this file to terraform.tfvars and customize for your deployment
+
+# General Configuration
+project_name = "portfolio"
+environment  = "dev"
+location     = "eastus"
+owner        = "Your Name"
+
+# Networking
+vnet_address_space = ["10.0.0.0/16"]
+aks_subnet_prefix  = "10.0.1.0/24"
+app_subnet_prefix  = "10.0.2.0/24"
+db_subnet_prefix   = "10.0.3.0/24"
+mgmt_subnet_prefix = "10.0.4.0/24"
+
+enable_ddos_protection = false
+enable_network_watcher = true
+
+# AKS Configuration
+kubernetes_version      = "1.28"
+aks_default_node_count  = 2
+aks_min_nodes           = 1
+aks_max_nodes           = 5
+aks_default_vm_size     = "Standard_D2s_v3"
+aks_user_vm_size        = "Standard_D4s_v3"
+aks_availability_zones  = ["1", "2", "3"]
+
+enable_user_node_pool   = false
+enable_azure_policy     = true
+enable_azure_ad_rbac    = true
+enable_private_cluster  = false
+
+# Container Registry
+acr_sku             = "Standard"
+acr_georeplications = []  # Premium SKU only
+
+# Monitoring
+log_retention_days = 30
+
+# Common Tags
+common_tags = {
+  CostCenter  = "Engineering"
+  Department  = "Infrastructure"
+  Application = "Portfolio"
+}
