@@ -13,6 +13,7 @@
 - [CyberArk Conjur & Secrets Management](#cyberark-conjur--secrets-management)
 - [DevSecOps Pipeline Security](#devsecops-pipeline-security)
 - [Python Gen AI & SQL Experience](#python-gen-ai--sql-experience)
+- [API Platform & Java Middleware Operations](#api-platform--java-middleware-operations)
 - [Incident Response & Troubleshooting](#incident-response--troubleshooting)
 - [CI/CD & DevOps](#cicd--devops)
 - [Behavioral Questions](#behavioral-questions)
@@ -524,6 +525,92 @@ jobs:
 3. **HIPAA Compliance Reporting** (Fineos): PostgreSQL queries for access auditing - who accessed what, when, from where
 4. **Application Health Dashboards**: MySQL/PostgreSQL queries for deployment tracking and configuration management
 5. **Conjur Rotation Verification**: SQL queries confirming Conjur-managed credential rotations completed successfully on target databases
+
+---
+
+## API Platform & Java Middleware Operations
+
+### RESTful API Configuration on OpenShift
+- **DeploymentConfig**: Java API containers with JVM tuning (`-XX:+UseG1GC`, heap sizing), resource limits, readiness/liveness probes
+- **Service & Route**: ClusterIP service with TLS edge-terminated Route; re-encryption for sensitive APIs
+- **3Scale Integration**: APIcast gateway fronting APIs with rate limiting, OAuth2/OIDC authentication, developer portal
+- **API Design**: Resource-oriented URLs, proper HTTP methods, versioning (`/api/v1/`), standard error formats, pagination
+
+### How I Configure 3Scale API Management
+1. **Admin Portal**: Create API Product, define backend URL (OpenShift service), configure application plans with rate limits
+2. **APIcast Gateway**: Deploy on OpenShift; configure caching, response code tracking, TLS
+3. **Authentication**: OAuth2, API key, or OIDC based on security requirements
+4. **Mapping Rules**: URL paths mapped to methods for analytics
+5. **Developer Portal**: Published OpenAPI specs, self-service key provisioning, usage dashboards
+
+### How I Monitor API Services (RED Method)
+| Metric | What I Watch | Alert Threshold |
+|--------|-------------|-----------------|
+| Request Rate (RPS) | 3Scale analytics + Prometheus | >50% deviation from baseline |
+| Error Rate (4xx/5xx) | Prometheus + access logs | >1% 5xx, >5% 4xx |
+| Duration (latency) | Prometheus histograms | p95 >2s, p99 >5s |
+| JVM Heap | JMX Exporter | >85% after GC |
+| DB Connection Pool | JMX (`ActiveCount`, `AvailableCount`) | Available <10% |
+| Pod Restarts | kube-state-metrics | >3 in 15 min |
+| 3Scale Rate Limits | 3Scale analytics | Consumers consistently hitting limits |
+
+### JBoss/EAP Operations
+- **Configuration**: standalone.xml - datasources (connection pools, validation), JVM options, subsystem tuning
+- **Monitoring**: JMX Exporter for heap, threads, GC, datasource pool; access logs for response times
+- **Troubleshooting**: Thread dumps (`jstack`), heap dumps (`jmap`), GC log analysis, slow query identification
+- **Containerized JBoss**: Red Hat EAP images on OpenShift with `JAVA_OPTS_APPEND` for JVM tuning
+- **My experience**: Macy's (JBoss/WebSphere middleware), Disney (WebSphere->Chef migration), Bank of America (JBoss on OpenShift)
+
+### How I Handle API Outages
+1. **Detection**: Grafana alerts on error rate/latency; 3Scale analytics showing traffic drops
+2. **Quick triage**: `oc get pods`, `oc logs`, `oc get events`, `oc adm top pods`
+3. **Identify scope**: Single pod? All pods? Database? External dependency? 3Scale gateway?
+4. **Communicate**: Update Jira incident ticket, notify team on Slack/Teams
+5. **Fix or rollback**: Apply fix if root cause clear, otherwise rollback to last known good
+6. **Post-incident**: Blameless post-mortem in Confluence, update runbooks, create preventive Jira tickets
+
+### How I Roll Back Changes
+```bash
+# OpenShift DeploymentConfig rollback
+oc rollout history dc/payment-api              # View history
+oc rollout undo dc/payment-api                 # Rollback to previous
+oc rollout undo dc/payment-api --to-revision=5 # Rollback to specific version
+oc rollout status dc/payment-api               # Verify
+
+# ArgoCD GitOps rollback
+git revert HEAD && git push origin main        # ArgoCD auto-syncs
+
+# Database rollback
+mvn flyway:undo                                # Flyway reverse migration
+```
+
+### CI/CD: Jenkins vs Tekton
+| Aspect | Jenkins | Tekton |
+|--------|---------|--------|
+| Best for | Complex orchestration, legacy | Cloud-native, OpenShift-native |
+| Config | Groovy Jenkinsfile | YAML CRDs |
+| My usage | Fineos, Bank of America, Wells Fargo, Keysight, Macy's | Fineos (OpenShift Pipelines) |
+
+**Pipeline stages**: Checkout -> Maven Build/Test -> SAST/SCA Scan -> Build Image -> Deploy Dev -> Integration Tests -> Deploy Staging -> DAST -> Approve -> Deploy Prod
+
+### Maven Build Management
+- POM configuration, dependency management, multi-module projects
+- `mvn clean package` with Surefire for unit tests, Failsafe for integration tests
+- Artifact publishing to JFrog Artifactory / Nexus
+- OWASP Dependency Check plugin for SCA scanning in build
+
+### How I Manage Security Issues
+- **3Scale**: API key/OAuth2 validation at gateway; rate limiting; IP blocking for malicious actors
+- **Pipeline security**: SAST (Checkmarx/SonarQube), SCA (Black Duck), DAST (OWASP ZAP) with security gates
+- **Secrets**: CyberArk Conjur for all credentials; never in code, config maps, or pipeline variables
+- **Container**: Image scanning (Trivy/Prisma), non-root execution, restricted SCC, approved registries only
+- **Compromised credentials**: Revoke immediately in 3Scale/Conjur -> rotate -> audit usage -> investigate root cause
+
+### Jira & Confluence Documentation
+- **Jira workflows**: Backlog -> Sprint Planning -> In Progress -> Code Review -> QA -> Done
+- **Story estimation**: Fibonacci story points (1, 2, 3, 5, 8, 13)
+- **Automation**: Jira transitions triggered by pipeline events (deploy -> Done)
+- **Confluence**: API docs, ADRs, runbooks, incident post-mortems, onboarding guides, release notes
 
 ---
 
