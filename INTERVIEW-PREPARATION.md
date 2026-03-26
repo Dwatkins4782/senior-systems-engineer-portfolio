@@ -20,6 +20,7 @@
 - [Behavioral Questions](#behavioral-questions)
 - [Leadership & Communication](#leadership--communication)
 - [Common Interview Questions](#common-interview-questions)
+- [Recruiter Screening Questions (Quick Reference)](#recruiter-screening-questions-quick-reference)
 
 ---
 
@@ -1001,6 +1002,245 @@ A:
 5. Migration: Phased approach with rollback plan
 6. Validation: Monitor and verify
 7. Optimize: Cost, performance, security post-migration
+
+---
+
+## Recruiter Screening Questions (Quick Reference)
+
+These are common Yes/No + proof-point questions recruiters ask during initial screenings. Each answer maps directly to production experience.
+
+---
+
+### 1. Core Infrastructure: AWS + Terraform (Production)
+
+**Q: Do you have hands-on experience building and managing cloud infrastructure in AWS using Terraform in a production environment?**
+
+**A: Yes.**
+
+| Where | What I Built with Terraform on AWS | Production Scale |
+|-------|-----------------------------------|-----------------|
+| **Keysight Technologies** | VPC, EC2 instances, Route 53, CloudWatch, S3, security groups — full Terraform + Ansible provisioning | Production infra supporting QA/test automation platform |
+| **Fineos** | AWS infrastructure for hybrid cloud (OpenShift on AWS), EC2 provisioning, S3 buckets, IAM roles, Secrets Manager integration | Production healthcare insurance platform (HIPAA) |
+| **Bank of America** | AWS networking, EC2, security groups, IAM policies — Terraform used alongside Ansible for provisioned infrastructure | Production financial platform (PCI-DSS regulated) |
+| **Navy Federal** | Primarily Azure (Terraform/Terragrunt for AKS, networking, storage, Key Vault) — same Terraform patterns, transferable to AWS | Enterprise financial platform |
+
+**Specific Terraform responsibilities:**
+- Wrote and maintained **Terraform modules** for reusable infrastructure patterns (VPC, subnets, security groups, EC2, S3, IAM)
+- Managed **remote state** (S3 backend with DynamoDB locking on AWS; Azure Storage on Azure)
+- Implemented **Terragrunt** for DRY multi-environment patterns with environment-specific overrides
+- Built **CI/CD pipelines** that ran `terraform plan` on PR, `terraform apply` on merge with approval gates
+- Handled **drift detection** and reconciliation using scheduled `terraform plan` runs
+- Managed **state operations**: `terraform import` for brownfield resources, `terraform state mv` for refactoring
+
+**How I configure it:**
+```bash
+# AWS provider configuration
+provider "aws" {
+  region = var.aws_region
+  assume_role {
+    role_arn = var.terraform_role_arn  # Least-privilege IAM role
+  }
+}
+
+# Remote state (S3 + DynamoDB)
+terraform {
+  backend "s3" {
+    bucket         = "company-terraform-state"
+    key            = "prod/infrastructure/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "terraform-locks"
+    encrypt        = true
+  }
+}
+```
+
+**How I monitor it:**
+- Scheduled `terraform plan` runs to detect drift
+- CloudWatch alarms for infrastructure health (EC2 status checks, ALB health, RDS metrics)
+- AWS Config rules for compliance monitoring (S3 encryption enabled, public access blocked, etc.)
+- Terraform Cloud/pipeline notifications for failed applies
+
+**How I roll back:**
+- Git revert the Terraform change -> pipeline re-applies previous state
+- `terraform plan` to verify rollback before `terraform apply`
+- For urgent rollbacks: `terraform apply -target=<resource>` to fix specific resources
+- State file versioning in S3 allows recovery of previous state
+
+---
+
+### 2. Kubernetes + Helm (Production)
+
+**Q: Have you deployed and managed containerized applications in Kubernetes using Helm in a production environment?**
+
+**A: Yes.**
+
+| Where | Kubernetes Platform | Helm Usage |
+|-------|-------------------|------------|
+| **Navy Federal** | **AKS** — built and managed clusters end-to-end (node pools, networking, RBAC, multi-env) | Helm charts for microservice deployments, ArgoCD app-of-apps pattern |
+| **Fineos** | **OpenShift (OCP 4.x)** — deployed Helm charts to OpenShift via JFrog + Jenkins pipelines | Built and deployed Jenkins servers (JCasC) with Helm charts; automated Helm deployments to hybrid cloud |
+| **Bank of America** | **OpenShift** — containerized workloads with BC/DC templates, migrated apps from VMs to containers | Helm charts for standardized application packaging |
+
+**Specific Helm responsibilities:**
+- Created and maintained **custom Helm charts** for microservices (values.yaml per environment: dev/staging/prod)
+- Managed **Helm repositories** in JFrog Artifactory
+- Implemented **Helm hooks** for database migrations (pre-install, pre-upgrade)
+- Used **helmfile** for declarative multi-chart deployments
+- Integrated Helm deployments into **ArgoCD** for GitOps-based delivery
+- Managed **Helm chart versioning** and release lifecycle (install, upgrade, rollback)
+
+**How I configure it:**
+```yaml
+# values-prod.yaml
+replicaCount: 3
+image:
+  repository: registry.internal/payment-api
+  tag: "1.2.3"
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilization: 70
+ingress:
+  enabled: true
+  hosts:
+    - host: payment-api.prod.internal
+      paths: ["/api"]
+  tls:
+    - secretName: payment-api-tls
+```
+
+```bash
+# Deployment commands
+helm upgrade --install payment-api ./charts/payment-api \
+  -f values-prod.yaml \
+  -n payment-api-prod \
+  --wait --timeout 5m
+
+# Check release status
+helm list -n payment-api-prod
+helm history payment-api -n payment-api-prod
+```
+
+**How I monitor it:**
+- `helm list` for release status across namespaces
+- Prometheus + Grafana dashboards for pod health, resource usage, error rates
+- ArgoCD sync status for GitOps-managed Helm releases
+- `kubectl get events` for deployment issues
+
+**How I roll back:**
+```bash
+# Helm rollback to previous revision
+helm history payment-api -n payment-api-prod    # View revisions
+helm rollback payment-api 3 -n payment-api-prod # Rollback to revision 3
+
+# ArgoCD rollback (if GitOps-managed)
+git revert HEAD && git push  # ArgoCD auto-syncs to previous state
+```
+
+**How I handle outages:**
+1. Check pod status: `kubectl get pods -n payment-api-prod`
+2. Check Helm release: `helm status payment-api -n payment-api-prod`
+3. Check events: `kubectl get events --sort-by=.lastTimestamp`
+4. If bad release: `helm rollback payment-api <previous-revision>`
+5. If config issue: fix values.yaml, `helm upgrade` with corrected config
+6. Post-incident: update chart defaults, add validation in CI pipeline
+
+---
+
+### 3. Python Automation (Production)
+
+**Q: Have you written and maintained Python scripts for automation or infrastructure support in a production environment?**
+
+**A: Yes.**
+
+| Where | Python Automation Use Case | Production Impact |
+|-------|--------------------------|-------------------|
+| **Navy Federal** | Build agent automation — Python scripts for ADO agent provisioning, health monitoring, and configuration management | Managed agents supporting thousands of developers |
+| **Navy Federal** | Pipeline Log Anomaly Detection — LLM-powered tool analyzing CI/CD logs, auto-classifying failures, generating incident summaries | Reduced MTTR for pipeline failures |
+| **Navy Federal** | Infrastructure Documentation Generator — parses Terraform modules to auto-generate security docs and compliance mappings | Automated compliance documentation |
+| **Fineos** | Jira API integration scripts — automated ticket creation, status updates, and reporting tied to pipeline events | End-to-end traceability automation |
+| **Keysight** | Modified Python wrapper script (superclass/subclass refactoring) into generic parameterized modules | Simplified test automation framework |
+| **Bank of America** | Glue scripts integrating Jenkins, Git/SVN, Artifactory, and OpenShift BC/DC deployments | Automated multi-tool pipeline orchestration |
+
+**Types of Python automation I write:**
+```python
+# 1. Infrastructure automation (Terraform wrapper)
+import subprocess, json, sys
+
+def terraform_plan(env):
+    result = subprocess.run(
+        ["terraform", "plan", f"-var-file=envs/{env}.tfvars", "-out=plan.out", "-json"],
+        capture_output=True, text=True
+    )
+    changes = json.loads(result.stdout)
+    if changes.get("resource_changes"):
+        notify_slack(f"Terraform plan for {env}: {len(changes['resource_changes'])} changes")
+    return result.returncode
+
+# 2. Secret rotation automation
+import requests
+from azure.identity import DefaultAzureCredential
+from azure.keyvault.secrets import SecretClient
+
+def rotate_db_credentials(vault_url, secret_name):
+    credential = DefaultAzureCredential()
+    client = SecretClient(vault_url=vault_url, credential=credential)
+    new_password = generate_secure_password()
+    client.set_secret(secret_name, new_password)
+    update_database_password(new_password)
+    log_rotation_event(secret_name)
+
+# 3. Pipeline health monitoring
+import requests, datetime
+
+def check_pipeline_health(org, project, token):
+    url = f"https://dev.azure.com/{org}/{project}/_apis/build/builds?api-version=7.0"
+    response = requests.get(url, headers={"Authorization": f"Bearer {token}"})
+    builds = response.json()["value"]
+    failed = [b for b in builds if b["result"] == "failed"]
+    if len(failed) > 3:
+        create_jira_incident(f"{len(failed)} pipeline failures in last hour")
+```
+
+**How I monitor my Python scripts:**
+- Structured logging (Python `logging` module) shipped to ELK/Splunk
+- Prometheus metrics exposed via `prometheus_client` library
+- Azure Monitor / CloudWatch for scheduled script execution health
+- Alerting on script failures via PagerDuty/Slack webhooks
+
+**How I manage security:**
+- No hardcoded credentials — all from environment variables, Key Vault, or Conjur
+- `pip audit` / `safety check` for dependency vulnerability scanning in CI
+- Virtual environments (`venv`) for dependency isolation
+- Code review required for all automation scripts before production deployment
+
+---
+
+### 4. Data Platform / Data Lake Infrastructure
+
+**Q: Briefly describe a recent project where you supported or built infrastructure for a data platform or data lake. Include the tools you used and your specific responsibilities.**
+
+**A:** *(Already covered in detail in [Data Platform & Data Lake Infrastructure](#data-platform--data-lake-infrastructure) section above)*
+
+**Quick version for recruiter:**
+
+At **Navy Federal Credit Union** (2022-2025), I built and managed cloud infrastructure for a centralized data platform:
+- Provisioned **Azure Data Lake Storage Gen2** organized in a **medallion architecture** (bronze/silver/gold)
+- Built **AKS clusters** hosting containerized ETL/ELT services with Horizontal Pod Autoscaling
+- All infrastructure as code using **Terraform/Terragrunt** with modular patterns and remote state
+- Managed **MongoDB clusters** for the operational data layer (replica sets, indexing, backups)
+- Designed **observability stack** (Prometheus, Grafana, OpenTelemetry) for pipeline health monitoring
+- Implemented **secrets management** (ESO + Azure Key Vault) and **GitOps delivery** (ArgoCD)
+- Deployed through **Azure DevOps YAML pipelines** with security gates and approval workflows
+
+**Tools:** Terraform, Terragrunt, Azure (AKS, ADLS Gen2, Key Vault, VMSS, Monitor), MongoDB, Kubernetes, ArgoCD, Prometheus, Grafana, OpenTelemetry, Azure DevOps, Docker, Helm, Python, Bash, PowerShell
 
 ---
 
