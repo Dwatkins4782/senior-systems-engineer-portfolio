@@ -832,6 +832,26 @@ Get-WmiObject Win32_LogicalDisk
 - Community engagement (conferences, meetups, blogs)
 - Internal knowledge sharing
 
+### API Platform Role — Behavioral Requirement Answers
+
+**Agile communication / remote meetings:**
+> "At Navy Federal, I worked fully remote and proactively raised concerns during sprint planning about AKS cluster capacity before a major release. Presented Grafana data, proposed a scaling plan, and we avoided a production incident."
+
+**Understanding development team needs:**
+> "At Fineos, I built an Internal Developer Platform by sitting with dev teams to understand their onboarding pain points. Designed self-service pipeline templates and environment provisioning that reduced onboarding time by 50%."
+
+**Innovation & continuous improvement:**
+> "At Navy Federal, I replaced static build agents with ephemeral VMSS-based agents — cutting queue time by 50%. I also built an LLM-powered pipeline log analyzer (Python Gen AI) that auto-classifies failures and suggests fixes."
+
+**Communicating security/risk to non-technical audiences:**
+> "At Bank of America (PCI-DSS), I presented security vulnerabilities to management in business terms: 'This affects our payment API — if exploited, it impacts PCI compliance and could result in regulatory penalties.' For developers, I included the CVE, affected code, and a fix."
+
+**Managing multiple projects under strict timelines:**
+> "At Navy Federal, I managed three concurrent initiatives — AKS upgrades, VMSS migration, and ArgoCD implementation. Used Jira epics to track each, identified cross-dependencies, and delivered all three within the quarter."
+
+**Team player (devs, testers, BAs, scrum master):**
+> "I pair with developers to troubleshoot pipeline issues, configure parallel test stages for QA teams (Keysight), translate technical constraints for BAs in Jira, and provide accurate velocity data for scrum masters. I keep my camera on, follow up with Confluence notes, and communicate async across time zones."
+
 ---
 
 ## Leadership & Communication
