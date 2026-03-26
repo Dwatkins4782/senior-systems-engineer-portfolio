@@ -654,6 +654,32 @@ mvn flyway:undo                                # Flyway reverse migration
 
 ---
 
+## Platform Engineer (Startup/Cloud-Native) Quick Reference
+
+### Role Profile
+Terraform + AWS (EC2, ECS, RDS, S3, CloudWatch) + TypeScript/NestJS/Node.js backend + MongoDB/Postgres + IaC + remote/async distributed team
+
+### Key Skills Mapping
+| Requirement | My Experience |
+|-------------|--------------|
+| Terraform (scalable, reproducible) | Terraform/Terragrunt modules at Navy Federal (AKS, networking, storage); AWS infra at Keysight, Fineos, BofA |
+| AWS (EC2, ECS, RDS, S3, CloudWatch) | EC2/VPC/S3/Route53 at Keysight; AWS+OpenShift at Fineos/BofA; CloudWatch monitoring |
+| Backend services (Node.js) | Containerize, deploy, monitor microservices on K8s/ECS; Docker multi-stage builds, health checks |
+| MongoDB & Postgres | MongoDB clusters at Navy Federal (replica sets, tuning); PostgreSQL at Fineos (HIPAA), BofA queries |
+| Reusable modules & internal tooling | IDP at Fineos (50% faster onboarding); pipeline template libraries; self-service scaffolding |
+| Design through production | Full lifecycle at every role — architecture, IaC, CI/CD, deploy, monitor, incident response |
+| Globally distributed remote team | Fully remote at Navy Federal/Fineos; async-first, Confluence docs, timezone-overlap meetings |
+| Startup/fast-paced | Bias toward action, managed services for speed, automation from day 1, wear multiple hats |
+
+### How I Configure, Monitor, and Rollback
+- **Terraform**: Modules + Terragrunt for DRY; S3+DynamoDB state; drift detection via nightly `plan`; rollback = git revert
+- **ECS**: Fargate tasks in private subnets, ALB, auto-scaling on CPU; rollback = update service to previous task def revision
+- **RDS**: Multi-AZ, read replicas, Performance Insights, automated backups; rollback = point-in-time restore
+- **Monitoring**: CloudWatch dashboards + alarms + Log Insights; composite alarms; SNS -> PagerDuty
+- **Outage steps**: Check ECS tasks -> check logs -> check recent deploys -> fix or rollback -> post-incident review
+
+---
+
 ## Incident Response & Troubleshooting
 
 ### Incident Response Process
