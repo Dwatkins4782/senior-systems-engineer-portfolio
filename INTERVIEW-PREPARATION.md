@@ -852,6 +852,43 @@ Get-WmiObject Win32_LogicalDisk
 **Team player (devs, testers, BAs, scrum master):**
 > "I pair with developers to troubleshoot pipeline issues, configure parallel test stages for QA teams (Keysight), translate technical constraints for BAs in Jira, and provide accurate velocity data for scrum masters. I keep my camera on, follow up with Confluence notes, and communicate async across time zones."
 
+### STAR Stories — Project Challenges, Solutions & Recognition
+
+**Use this quick-reference to pick the right story for the question:**
+
+| Question Type | Best Story |
+|--------------|------------|
+| Project issue you solved | AKS Meltdown or Build Agent Crisis |
+| Time you were recognized | Build Agent (VP), HIPAA Audit (CISO), CVE Remediation (InfoSec) |
+| Difficult situation | Cross-team conflict or Unrealistic timelines |
+| Failure / mistake | Friday deployment — caught fast, made right rollback call |
+| Handling disagreements | ArgoCD adoption — listened, demoed, compromised, proved with data |
+| Handling pressure | AKS 23-min recovery or 18-hr CVE remediation |
+| Innovation | Ephemeral VMSS agents or auto-generated compliance reports |
+| Pushing back | Data + alternative plan + quick win to build trust |
+| Compliance challenge | HIPAA audit (zero findings) or PCI-DSS CVE (18-hr fix) |
+
+**Story 1 — AKS Cluster Meltdown (Navy Federal):**
+> Production AKS cluster had cascading pod failures — 3 of 8 nodes hit memory exhaustion from a leaking microservice. I cordoned/drained nodes, rolled back the bad deployment with `helm rollback`, scaled the node pool, and restored services in 23 minutes (SLA was 30). Implemented resource quotas and Grafana alerting to prevent recurrence. Recognized by engineering leadership at quarterly all-hands.
+
+**Story 2 — Build Agent Crisis (Navy Federal):**
+> 60% of build agents went offline from disk exhaustion, blocking thousands of developers. Wrote emergency cleanup script, restored agents in 45 minutes. Then designed ephemeral VMSS-based agents that spin up fresh per build — eliminated the problem permanently and cut queue time by 50%. Recognized by VP of Engineering; approach became org-wide standard.
+
+**Story 3 — HIPAA Audit with 3 Weeks Notice (Fineos):**
+> Discovered compliance gaps in CI/CD: secrets in pipeline vars, inconsistent image scanning, no audit trail. Deployed ESO for secrets, Prisma Cloud scanning with hard gates, OPA Gatekeeper policies, and auto-generated audit reports from pipeline telemetry. Passed audit with zero findings. Recognized by CISO.
+
+**Story 4 — Friday Production Rollback (Bank of America):**
+> Production API deployment failed — connection pool config mismatch caused 500 errors. Could have quick-fixed the pool size, but that would violate PCI-DSS change control. Made the right call to rollback (`oc rollout undo`) — restored in 15 minutes. Added mandatory load testing gate and environment-specific Helm values to prevent config drift.
+
+**Story 5 — Cross-Team Conflict over ArgoCD (Fineos):**
+> Senior dev lead publicly opposed ArgoCD adoption. Instead of arguing, I scheduled a 1-on-1, understood his concerns (visibility, debugging), built a demo addressing each one, proposed a phased pilot. After 2 sprints, deployment time dropped from 45 min to 3 min. He became ArgoCD's biggest advocate and publicly thanked me in retro.
+
+**Story 6 — Unrealistic Timelines (Navy Federal):**
+> PM demanded 3 major initiatives in a single 2-week sprint. Created Jira dependency map showing prerequisites, proposed 6-week phased plan, showed risk of rushing (production outage), and delivered a quick win in week 1 to build trust. PM accepted the plan and started including me in planning meetings.
+
+**Story 7 — Critical CVE in Production (Bank of America):**
+> CVSS 9.8 RCE vulnerability in a production payment API library. Added WAF rule as immediate mitigation, coordinated emergency patch with dev team, expedited through full CI/CD pipeline, got emergency change approval, deployed with zero downtime — all in 18 hours (48-hr PCI-DSS window). Recognized by InfoSec as fastest critical remediation that quarter.
+
 ---
 
 ## Leadership & Communication
