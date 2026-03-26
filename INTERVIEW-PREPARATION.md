@@ -13,6 +13,7 @@
 - [CyberArk Conjur & Secrets Management](#cyberark-conjur--secrets-management)
 - [DevSecOps Pipeline Security](#devsecops-pipeline-security)
 - [Python Gen AI & SQL Experience](#python-gen-ai--sql-experience)
+- [Data Platform & Data Lake Infrastructure](#data-platform--data-lake-infrastructure)
 - [API Platform & Java Middleware Operations](#api-platform--java-middleware-operations)
 - [Incident Response & Troubleshooting](#incident-response--troubleshooting)
 - [CI/CD & DevOps](#cicd--devops)
@@ -525,6 +526,44 @@ jobs:
 3. **HIPAA Compliance Reporting** (Fineos): PostgreSQL queries for access auditing - who accessed what, when, from where
 4. **Application Health Dashboards**: MySQL/PostgreSQL queries for deployment tracking and configuration management
 5. **Conjur Rotation Verification**: SQL queries confirming Conjur-managed credential rotations completed successfully on target databases
+
+---
+
+## Data Platform & Data Lake Infrastructure
+
+### Q: Describe a recent project where you supported or built infrastructure for a data platform or data lake.
+
+**A (Navy Federal Credit Union):**
+
+At Navy Federal, I supported the infrastructure buildout for a centralized data platform used by analytics and application teams to process financial-grade data workloads.
+
+**Infrastructure Provisioning (Terraform/Terragrunt + Azure):**
+- Built and managed cloud infrastructure using **Terraform and Terragrunt** with DRY module patterns, remote state, and environment-specific overrides
+- Provisioned **AKS clusters**, Azure networking (VNets, subnets, NSGs, private endpoints), **Azure Storage accounts** (Blob/ADLS Gen2 for data lake layers), and **Azure Key Vault**
+- All infrastructure version-controlled and deployed through **Azure DevOps YAML pipelines** with plan/apply stages and approval gates
+
+**Data Storage & Database Layer:**
+- Built and managed **MongoDB clusters** for the operational data layer — replica set configuration, index optimization, performance tuning, backup strategies, security hardening
+- Provisioned **Azure Data Lake Storage Gen2** with hierarchical namespace, organizing data zones following a **medallion architecture** (bronze/silver/gold) pattern
+
+**Kubernetes Platform (AKS):**
+- Architected **AKS clusters** hosting data processing microservices — node pool scaling, networking (Ingress, Service Mesh), RBAC, multi-environment config (dev/staging/prod)
+- Data pipeline workloads (ETL/ELT jobs) ran as containerized services with **HPA** for variable processing loads
+
+**Observability:**
+- Designed **Prometheus + Grafana + OpenTelemetry** observability stack with custom dashboards tracking pipeline health, processing latency, throughput, and SLO-based alerting
+- Gave data engineering team visibility into pipeline failures, data freshness, and bottlenecks
+
+**Security & Secrets:**
+- **External Secrets Operator** + Azure Key Vault for DB credentials, storage keys, API tokens
+- **Sealed Secrets (Bitnami)** for GitOps-compliant secret lifecycle
+- **Kong API Gateway** with JWT/OAuth2 for zero-trust data service endpoint access
+
+**CI/CD & GitOps:**
+- **ArgoCD** for GitOps-based delivery with automated sync, drift detection, rollback
+- Fully automated release pipelines with security gates, scan thresholds, Jira/ServiceNow auto-updates
+
+**Tools:** Terraform, Terragrunt, Azure (AKS, ADLS Gen2, Key Vault, VMSS, Monitor), MongoDB, Kubernetes, ArgoCD, Prometheus, Grafana, OpenTelemetry, Azure DevOps, Docker, Helm, Kong, ESO, Python, Bash, PowerShell
 
 ---
 
