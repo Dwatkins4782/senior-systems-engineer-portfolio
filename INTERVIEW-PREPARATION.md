@@ -10,6 +10,9 @@
 - [Kubernetes & Container Orchestration](#kubernetes--container-orchestration)
 - [Infrastructure as Code](#infrastructure-as-code)
 - [Security & Compliance](#security--compliance)
+- [CyberArk Conjur & Secrets Management](#cyberark-conjur--secrets-management)
+- [DevSecOps Pipeline Security](#devsecops-pipeline-security)
+- [Python Gen AI & SQL Experience](#python-gen-ai--sql-experience)
 - [Incident Response & Troubleshooting](#incident-response--troubleshooting)
 - [CI/CD & DevOps](#cicd--devops)
 - [Behavioral Questions](#behavioral-questions)
@@ -391,10 +394,10 @@ jobs:
 
 ### Secrets Management
 - Never commit secrets to source control
-- Use managed services (Azure Key Vault, AWS Secrets Manager)
-- Rotate secrets regularly
-- Audit access to secrets
-- Use managed identities when possible
+- Use managed services (Azure Key Vault, AWS Secrets Manager, CyberArk Conjur)
+- Rotate secrets regularly (automated via Conjur rotators)
+- Audit access to secrets (Conjur access logging)
+- Use managed identities when possible (Azure AD + Conjur authn-azure)
 
 ### Security Hardening (Linux)
 ```bash
@@ -408,6 +411,119 @@ jobs:
 - Use SELinux/AppArmor
 - Regular security scanning
 ```
+
+---
+
+## CyberArk Conjur & Secrets Management
+
+### Conjur Enterprise Architecture
+- **Leader + Standbys**: 3-node cluster for HA with automatic failover
+- **Followers**: Deployed in each target environment (AKS clusters, VMSS pools) for local reads
+- **Policy-as-Code**: Declarative YAML/HCL policies stored in Git defining host identities, permissions, and secret access
+- **Authenticators**: authn-azure (Azure AD), authn-jwt (JWT/OIDC), authn-k8s (Kubernetes SA), authn (API key)
+
+### Secret Lifecycle Management
+1. **Creation**: Generated via Conjur API or synced from CyberArk Privilege Cloud safes
+2. **Storage**: AES-256 encrypted in PostgreSQL backend; master data key in HSM
+3. **Access Control**: Policy-as-code defines which hosts/layers can read/execute/update each secret
+4. **Retrieval**: Via Summon CLI (env injection), REST API, CyberArk ADO extension, or K8s sidecar
+5. **Rotation**: Automated rotation for SQL Server, Azure AD app registrations, API keys, certificates
+6. **Revocation**: Immediate revocation by policy update or forced rotation
+7. **Audit**: Every retrieval/rotation/policy change logged with timestamp, identity, IP
+
+### CyberArk Synchronizer & Vault-Conjur Sync
+- One-way sync: CyberArk Privilege Cloud (PAM vault) -> Conjur Enterprise
+- Secrets from CyberArk safes auto-sync to Conjur variables when rotated
+- Conjur-to-Azure Key Vault sync via custom Python automation for Azure-native consumers
+- Single source of truth (CyberArk PAM) with distributed retrieval points (Conjur, Key Vault)
+
+### CI/CD Integration Patterns
+1. **CyberArk ADO Marketplace Extension**: Task-based secret retrieval in Azure DevOps pipelines
+2. **Summon CLI**: Multi-secret injection via secrets.yml provider file - secrets exist only for process lifetime
+3. **REST API**: Custom Python/Bash retrieval for complex scenarios
+4. **Kubernetes**: External Secrets Operator (ESO) with Conjur provider creating native K8s Secrets
+
+### My Conjur Experience
+- **Navy Federal**: Deployed Conjur Enterprise, configured Azure AD/JWT authenticators, Vault-to-AKV sync, full pipeline integration
+- **Fineos**: Conjur policy-as-code for K8s secret injection, Privilege Cloud sync for DB credential rotation (.NET/C# teams)
+- **Bank of America**: CyberArk Conjur + Privilege Cloud + ESO for PCI-DSS compliant secrets management
+
+---
+
+## DevSecOps Pipeline Security
+
+### Pipeline Security Integration (Shift-Left)
+| Stage | Tools | What It Catches |
+|-------|-------|-----------------|
+| Pre-commit | git-secrets, detect-secrets | Hardcoded credentials, API keys |
+| SAST | Checkmarx, SonarQube, Fortify | SQL injection, XSS, insecure code patterns |
+| SCA | Black Duck, Snyk, OWASP Dependency-Check | Known CVEs in libraries, license violations |
+| Container Scan | Twistlock/Prisma Cloud, Trivy | Base image vulnerabilities, misconfigurations |
+| IaC Scan | Checkov, tfsec, OPA | Terraform/Bicep misconfigurations, insecure defaults |
+| DAST | OWASP ZAP, Contrast | Runtime vulnerabilities, auth bypass |
+
+### IaC Security Enforcement
+- **Checkov/tfsec**: Pre-deployment scanning in CI pipeline
+- **OPA Gatekeeper**: Runtime admission control on AKS/OpenShift
+  - Enforce resource limits, image registries, labeling standards, security contexts
+  - PCI-DSS network segmentation policies (Bank of America)
+  - HIPAA-compliant configurations (Fineos)
+- **ArgoCD**: GitOps drift detection and self-healing
+
+### Container & Kubernetes Security
+- **Image Hardening**: Minimal base images, non-root, read-only rootfs, drop all capabilities, CIS Benchmarks
+- **Pod Security**: Restricted pod security standards, seccomp profiles, no privilege escalation
+- **Network**: Default-deny NetworkPolicies, service mesh mTLS (Istio), namespace isolation
+- **Runtime**: Falco/Prisma Cloud for anomalous behavior detection
+- **Registry**: OPA policies restricting to approved container registries only
+
+### IAM & Encryption
+- **Azure**: RBAC, Managed Identities, PIM (just-in-time), Conditional Access
+- **AWS**: IAM Roles, STS AssumeRole, SCPs, Permission Boundaries
+- **Encryption at Rest**: AES-256 storage encryption, TDE for SQL Server, etcd encryption for K8s
+- **Encryption in Transit**: TLS 1.2+, mTLS via service mesh, SSL-required DB connections
+
+### Vulnerability Management Workflow
+1. Scan detects vulnerability -> Auto-triage (CVSS + exploitability + business context)
+2. Jira ticket auto-created with remediation guidance
+3. Developer notification via Slack/Teams
+4. SLA tracking: Critical=24h, High=7d, Medium=30d, Low=90d
+5. Verification scan on next pipeline run
+6. Metrics: MTTR, open count, team compliance rates
+
+### Compliance-as-Code
+- **PCI-DSS**: OPA policies for CDE segmentation, secret rotation evidence via Conjur, CIS container hardening
+- **HIPAA**: Pipeline gates for PHI handling, encryption enforcement, access audit logging
+- **SOC 2 / ISO 27001**: OPA policies enforcing encryption, access controls, change management evidence
+- Terraform state as infrastructure evidence, Conjur audit logs as credential evidence, OPA decision logs as policy evidence
+
+### Threat Modeling (STRIDE)
+| Threat | Mitigation |
+|--------|-----------|
+| Spoofing | Azure AD MFA, Conjur host identity, mTLS |
+| Tampering | Signed images, immutable infra, Git-signed commits |
+| Repudiation | Conjur + K8s audit logs, centralized SIEM |
+| Info Disclosure | Encryption, secrets management, network segmentation |
+| Denial of Service | Rate limiting (Kong), autoscaling, HA/DR |
+| Elevation of Privilege | Least-privilege RBAC, pod security contexts |
+
+---
+
+## Python Gen AI & SQL Experience
+
+### Python Gen AI Projects
+1. **Pipeline Log Anomaly Detection** (Navy Federal): LLM-powered tool analyzing CI/CD logs, auto-classifying failures, and generating incident summaries with remediation steps
+2. **Infrastructure Documentation Generator** (Navy Federal): Parse Terraform modules to auto-generate security-focused docs, threat models, and compliance mappings
+3. **Vulnerability Report Summarization**: Gen AI tool producing executive summaries, developer remediation guides, and compliance impact assessments from SAST/DAST/SCA results
+4. **Runbook Auto-Generation**: Reads incident history and infra configs to generate operational runbooks
+5. **HIPAA Audit Documentation** (Fineos): Auto-generates compliant audit docs from CI/CD telemetry, reducing audit prep time by 70%
+
+### SQL Experience
+1. **Credential Rotation Tracking** (Navy Federal): SQL Server queries/stored procedures tracking rotation history, identifying stale credentials, generating compliance reports
+2. **Vulnerability Tracking** (Bank of America): Trend analysis, MTTR calculations, team compliance scoring against vuln management database
+3. **HIPAA Compliance Reporting** (Fineos): PostgreSQL queries for access auditing - who accessed what, when, from where
+4. **Application Health Dashboards**: MySQL/PostgreSQL queries for deployment tracking and configuration management
+5. **Conjur Rotation Verification**: SQL queries confirming Conjur-managed credential rotations completed successfully on target databases
 
 ---
 
